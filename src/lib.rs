@@ -1,5 +1,5 @@
 mod modify_op;
-mod op_deque;
+mod lazy_ops;
 mod seg_node;
 
 use seg_node::SegNode;
@@ -9,8 +9,7 @@ pub use modify_op::ModifyOp;
 
 pub struct SegTree<T, Op> {
     point_cnt: usize,
-    default_data: T,
-    root: Option<Box<SegNode<T, Op>>>,
+    root: SegNode<T, Op>,
 }
 
 impl<T, Op> SegTree<T, Op>
@@ -25,8 +24,7 @@ where
     pub fn new(point_cnt: usize, default_data: T) -> Self {
         Self {
             point_cnt,
-            default_data,
-            root: None,
+            root: SegNode::from_same_point_data(default_data),
         }
     }
 
@@ -40,11 +38,6 @@ where
     /// Return the length of the whole segment.
     pub fn point_cnt(&self) -> usize {
         self.point_cnt
-    }
-
-    /// Return default data for points in segment.
-    pub fn default_data(&self) -> &T {
-        &self.default_data
     }
 
     /// # Panics
@@ -66,17 +59,11 @@ where
             return;
         }
         assert!(target_range.end <= self.point_cnt);
-        let root = self.root.get_or_insert_with(|| {
-            Box::new(SegNode::from_same_point_data(
-                self.default_data.clone(),
-            ))
-        });
-        root.modify(
+        self.root.modify(
             &(0..self.point_cnt),
             target_range,
             op,
             ntimes,
-            &self.default_data,
         );
     }
 
@@ -91,16 +78,9 @@ where
     pub fn query(&mut self, target_range: &Range<usize>) -> T {
         assert!(target_range.end <= self.point_cnt);
         assert!(!target_range.is_empty());
-        let root = self.root.get_or_insert_with(|| {
-            Box::new(SegNode::from_same_point_data(
-                self.default_data.clone(),
-            ))
-        });
-        root.query(
+        self.root.query(
             &(0..self.point_cnt),
             target_range,
-            &self.default_data,
-            false,
         )
     }
 }

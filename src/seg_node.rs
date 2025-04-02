@@ -1,59 +1,38 @@
 use std::ops::{Add, Mul, Range};
 
-use crate::{modify_op::ModifyOp, op_deque::OpDeque};
+use crate::{lazy_ops::LazyOps, modify_op::ModifyOp};
 
 #[cfg(test)]
 use std::sync::atomic::{AtomicUsize, Ordering};
 #[cfg(test)]
 static CHILD_CREATED_CNT: AtomicUsize = AtomicUsize::new(0);
 
-enum NodeData<T> {
-    Same(T),
-    Acc(T),
+pub struct DivergedSegNode<T, Op> {
+    data_acc: T,
+    pending_ops: LazyOps<Op>,
+    l_child: Box<SegNode<T, Op>>,
+    r_child: Box<SegNode<T, Op>>,
 }
 
-impl<T> NodeData<T>
-where
-    for<'a> &'a T: Mul<usize, Output = T>,
-    T: Clone,
-{
-    fn calc_acc(&self, len: usize) -> T {
-        match self {
-            Same(s) => s * len,
-            Acc(s) => s.clone(),
-        }
-    }
+pub enum SegNode<T, Op> {
+    Same(T),
+    Diverged(DivergedSegNode<T, Op>),
+}
 
-    fn modify_whole_with<'a, I, O>(
-        &mut self,
-        my_range_len: usize,
-        op_times: I,
-    ) where
-        I: IntoIterator<Item = &'a (O, usize)>,
-        O: ModifyOp<T> + 'a,
+use SegNode::*;
+
+impl<T, Op> SegNode<T, Op> {
+    fn modify_whole_with<'a>(&mut self, op: &Op, times: usize)
+    where
+        Op: ModifyOp<T> + 'a,
     {
         match self {
-            Same(s) => {
-                for (op, times) in op_times {
-                    op.modify_range_ntimes(s, 1, *times)
-                }
-            }
-            Acc(a) => {
-                for (op, times) in op_times {
-                    op.modify_range_ntimes(a, my_range_len, *times)
-                }
+            Same(s) => op.modify_range_ntimes(s, 1, times),
+            Diverged(d) => {
+                d.pending_ops.push_back(op.clone(), times);
             }
         }
     }
-}
-
-use NodeData::*;
-
-pub struct SegNode<T, Op> {
-    data: NodeData<T>,
-    pending_ops: OpDeque<Op>,
-    l_child: Option<Box<Self>>,
-    r_child: Option<Box<Self>>,
 }
 
 fn range_mid(range: &Range<usize>) -> usize {
@@ -73,6 +52,33 @@ fn range_intersect(
     range1.start.max(range2.start)..range1.end.min(range2.end)
 }
 
+impl<T, Op> DivergedSegNode<T, Op>
+where
+    Op: PartialEq + ModifyOp<T>,
+{
+    fn resolve_pending_ops(&mut self, node_range: &Range<usize>) {
+        #[cfg(debug_assertions)]
+        {
+            assert!(!node_range.is_empty())
+        }
+
+        if self.pending_ops.inner().is_empty() {
+            return;
+        }
+
+        for (op, times) in self.pending_ops.inner() {
+            op.modify_range_ntimes(
+                &mut self.data_acc,
+                node_range.len(),
+                *times,
+            );
+            self.l_child.modify_whole_with(op, *times);
+            self.r_child.modify_whole_with(op, *times);
+        }
+        self.pending_ops.clear();
+    }
+}
+
 impl<T, Op> SegNode<T, Op>
 where
     T: Clone,
@@ -80,65 +86,13 @@ where
     Op: ModifyOp<T>,
 {
     pub fn from_same_point_data(same_point_data: T) -> Self {
-        Self {
-            data: Same(same_point_data),
-            pending_ops: OpDeque::new(),
-            l_child: None,
-            r_child: None,
-        }
-    }
-
-    fn ensure_child<'a>(
-        child: &'a mut Option<Box<Self>>,
-        default_data: &T,
-    ) -> &'a mut Self {
-        child.get_or_insert_with(|| {
-            #[cfg(test)]
-            {
-                CHILD_CREATED_CNT.fetch_add(1, Ordering::SeqCst);
-            }
-            Box::new(Self::from_same_point_data(default_data.clone()))
-        })
-    }
-
-    fn resolve_pending_ops(
-        &mut self,
-        node_range: &Range<usize>,
-        default_data: &T,
-    ) {
-        #[cfg(debug_assertions)]
-        {
-            assert!(!node_range.is_empty())
-        }
-
-        let OpDeque(ref mut ops) = self.pending_ops;
-        if ops.is_empty() {
-            return;
-        }
-
-        self.data.modify_whole_with(node_range.len(), ops.iter());
-
-        if node_range.len() > 1 {
-            let l_child =
-                Self::ensure_child(&mut self.l_child, default_data);
-            let r_child =
-                Self::ensure_child(&mut self.r_child, default_data);
-            for (op, times) in ops.iter() {
-                l_child.pending_ops.push_back(op.clone(), *times);
-                r_child.pending_ops.push_back(op.clone(), *times);
-            }
-        }
-
-        ops.clear();
-        ops.shrink_to_fit();
+        Self::Same(same_point_data)
     }
 
     pub fn query(
         &mut self,
         node_range: &Range<usize>,
         target_range: &Range<usize>,
-        default_data: &T,
-        force_refetch: bool,
     ) -> T {
         #[cfg(debug_assertions)]
         {
@@ -151,69 +105,25 @@ where
                 node_range
             );
         }
-        self.resolve_pending_ops(node_range, default_data);
-        if !force_refetch {
-            if target_range == node_range {
-                return self.data.calc_acc(node_range.len());
-            }
-            if let Same(s) = &self.data {
-                return s * target_range.len();
+
+        let diverged = match self {
+            Same(s) => return &*s * target_range.len(),
+            Diverged(d) => {
+                d.resolve_pending_ops(node_range);
+                if target_range == node_range {
+                    return d.data_acc.clone();
+                }
+                d
             }
         };
-
         let (l_child_range, r_child_range) = split_lr_range(node_range);
         let l_target_range = range_intersect(&l_child_range, target_range);
         let r_target_range = range_intersect(&r_child_range, target_range);
 
-        let query_child = |child: &mut Option<Box<Self>>,
-                           child_range: &Range<usize>,
-                           target_range: &Range<usize>,
-                           default_data: &T|
-         -> T {
-            #[cfg(debug_assertions)]
-            {
-                assert!(
-                    !target_range.is_empty(),
-                    "target: {:?} child: {:?}",
-                    target_range,
-                    child_range
-                );
-                assert!(
-                    target_range.start >= child_range.start
-                        && target_range.end <= child_range.end,
-                    "target: {:?} child: {:?}",
-                    target_range,
-                    child_range
-                );
-            }
-            child.as_mut().map_or_else(
-                || default_data * target_range.len(),
-                |ch| {
-                    ch.query(
-                        child_range,
-                        target_range,
-                        default_data,
-                        false,
-                    )
-                },
-            )
-        };
-        let mut query_l_child = || {
-            query_child(
-                &mut self.l_child,
-                &l_child_range,
-                &l_target_range,
-                default_data,
-            )
-        };
-        let mut query_r_child = || {
-            query_child(
-                &mut self.r_child,
-                &r_child_range,
-                &r_target_range,
-                default_data,
-            )
-        };
+        let mut query_l_child =
+            || diverged.l_child.query(&l_child_range, &l_target_range);
+        let mut query_r_child =
+            || diverged.r_child.query(&r_child_range, &r_target_range);
 
         if l_target_range.is_empty() {
             query_r_child()
@@ -224,13 +134,35 @@ where
         }
     }
 
+    fn ensure_diverged(
+        &mut self,
+        my_node_range_len: usize,
+    ) -> &mut DivergedSegNode<T, Op> {
+        match self {
+            Same(s) => {
+                #[cfg(test)]
+                CHILD_CREATED_CNT.fetch_add(2, Ordering::SeqCst);
+                *self = Diverged(DivergedSegNode {
+                    data_acc: &*s * my_node_range_len,
+                    pending_ops: LazyOps::new(),
+                    l_child: Box::new(SegNode::Same(s.clone())),
+                    r_child: Box::new(SegNode::Same(s.clone())),
+                });
+                let Diverged(d) = self else {
+                    panic!("Impossible")
+                };
+                d
+            }
+            Diverged(d) => d,
+        }
+    }
+
     pub fn modify(
         &mut self,
         node_range: &Range<usize>,
         target_range: &Range<usize>,
         op: &Op,
         times: usize,
-        default_data: &T,
     ) {
         #[cfg(debug_assertions)]
         {
@@ -246,7 +178,7 @@ where
         }
 
         if node_range == target_range {
-            self.pending_ops.push_back(op.clone(), times);
+            self.modify_whole_with(op, times);
             return;
         }
 
@@ -254,28 +186,28 @@ where
         let l_target_range = range_intersect(&l_child_range, target_range);
         let r_target_range = range_intersect(&r_child_range, target_range);
 
-        self.resolve_pending_ops(node_range, default_data);
+        let diverged = self.ensure_diverged(node_range.len());
+        diverged.resolve_pending_ops(node_range);
+
         if !r_target_range.is_empty() {
-            Self::ensure_child(&mut self.r_child, default_data).modify(
+            diverged.r_child.modify(
                 &r_child_range,
                 &r_target_range,
                 op,
                 times,
-                default_data,
             );
         }
         if !l_target_range.is_empty() {
-            Self::ensure_child(&mut self.l_child, default_data).modify(
+            diverged.l_child.modify(
                 &l_child_range,
                 &l_target_range,
                 op,
                 times,
-                default_data,
             );
         }
-        self.data = Acc(self
-            .query(node_range, node_range, default_data, true)
-            .clone());
+        diverged.data_acc =
+            &diverged.l_child.query(&l_child_range, &l_child_range)
+                + &diverged.r_child.query(&r_child_range, &r_child_range);
     }
 }
 
@@ -316,11 +248,11 @@ mod test {
         assert_eq!(seg.query_point(len / 5), 1);
         assert_eq!(CHILD_CREATED_CNT.load(Ordering::Acquire), 0);
         seg.modify(&(len / 4..len / 4 * 3), &Add1, 1);
-        assert_eq!(CHILD_CREATED_CNT.load(Ordering::Acquire), 8);
-        assert_eq!(seg.query_point(len / 4-1), 1);
+        assert_eq!(CHILD_CREATED_CNT.load(Ordering::Acquire), 6);
+        assert_eq!(seg.query_point(len / 4 - 1), 1);
         assert_eq!(seg.query_point(len / 4), 2);
         assert_eq!(seg.query_point(len / 4 * 3 - 1), 2);
         assert_eq!(seg.query_point(len / 4 * 3), 1);
-        assert_eq!(CHILD_CREATED_CNT.load(Ordering::Acquire), 8);
+        assert_eq!(CHILD_CREATED_CNT.load(Ordering::Acquire), 6);
     }
 }
