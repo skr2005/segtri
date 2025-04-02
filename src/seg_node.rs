@@ -56,10 +56,10 @@ impl<T, Op> DivergedSegNode<T, Op>
 where
     Op: PartialEq + ModifyOp<T>,
 {
-    fn resolve_pending_ops(&mut self, node_range: &Range<usize>) {
+    fn resolve_pending_ops(&mut self, node_range_len: usize) {
         #[cfg(debug_assertions)]
         {
-            assert!(!node_range.is_empty())
+            assert_ne!(node_range_len, 0);
         }
 
         if self.pending_ops.inner().is_empty() {
@@ -69,7 +69,7 @@ where
         for (op, times) in self.pending_ops.inner() {
             op.modify_range_ntimes(
                 &mut self.data_acc,
-                node_range.len(),
+                node_range_len,
                 *times,
             );
             self.l_child.modify_whole_with(op, *times);
@@ -109,7 +109,7 @@ where
         let diverged = match self {
             Same(s) => return &*s * target_range.len(),
             Diverged(d) => {
-                d.resolve_pending_ops(node_range);
+                d.resolve_pending_ops(node_range.len());
                 if target_range == node_range {
                     return d.data_acc.clone();
                 }
@@ -187,7 +187,7 @@ where
         let r_target_range = range_intersect(&r_child_range, target_range);
 
         let diverged = self.ensure_diverged(node_range.len());
-        diverged.resolve_pending_ops(node_range);
+        diverged.resolve_pending_ops(node_range.len());
 
         if !r_target_range.is_empty() {
             diverged.r_child.modify(
