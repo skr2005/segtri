@@ -23,12 +23,6 @@ where
         queue.push((new_op, times));
     }
 
-    // pub fn extend(&mut self, iter: impl IntoIterator<Item = (Op, usize)>) {
-    //     for (op, times) in iter {
-    //         self.push_back(op, times);
-    //     }
-    // }
-
     pub fn clear(&mut self) {
         self.0 = vec![];
     }
