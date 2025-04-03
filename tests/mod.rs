@@ -1,8 +1,8 @@
 use std::usize;
 
+use Operations::*;
 use segtree_rs::{ModifyOp, SegTree};
 use serial_test::parallel;
-use Operations::*;
 
 #[derive(Clone, PartialEq)]
 enum Operations {
@@ -46,6 +46,25 @@ fn test_simple_add() {
     assert_eq!(seg.query_point(9), 3);
     assert_eq!(seg.query_point(0), 5);
     assert_eq!(seg.query_point(2), 9);
+}
+
+#[test]
+#[parallel]
+fn test_with_points() {
+    let mut seg = SegTree::with_points(&(1..=10).collect::<Vec<_>>());
+    seg.modify(&(0..0), &Add1, 2);
+    assert_eq!(seg.query(&(0..10)), 10 + 45);
+    seg.modify(&(0..10), &Add1, 2);
+    assert_eq!(seg.query(&(0..10)), 30 + 45);
+    seg.modify(&(0..5), &Add1, 2);
+    assert_eq!(seg.query(&(0..10)), 40 + 45);
+    seg.modify_point(2, &Add1, 4);
+    assert_eq!(seg.query(&(0..10)), 44 + 45);
+    assert_eq!(seg.query(&(2..6)), 22 + 14);
+    assert_eq!(seg.query(&(0..10)), 44 + 45);
+    assert_eq!(seg.query_point(9), 3 + 9);
+    assert_eq!(seg.query_point(0), 5 + 0);
+    assert_eq!(seg.query_point(2), 9 + 2);
 }
 
 #[test]

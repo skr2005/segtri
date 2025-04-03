@@ -94,6 +94,29 @@ where
         Self::Same(same_point_data)
     }
 
+    pub fn with_points(point_data: &[T]) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            assert!(!point_data.is_empty())
+        }
+        if point_data.len() == 1 {
+            return Self::Same(point_data[0].clone());
+        }
+        let (l_range, r_range) = split_lr_range(&(0..point_data.len()));
+        let mut l_child =
+            Box::new(Self::with_points(&point_data[l_range.clone()]));
+        let mut r_child =
+            Box::new(Self::with_points(&point_data[r_range.clone()]));
+        let data_acc = &l_child.query(&l_range, &l_range)
+            + &r_child.query(&r_range, &r_range);
+        Self::Diverged(DivergedSegNode {
+            data_acc,
+            pending_ops_for_children: LazyOps::new(),
+            l_child,
+            r_child,
+        })
+    }
+
     pub fn query(
         &mut self,
         node_range: &Range<usize>,
