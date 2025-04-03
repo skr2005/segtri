@@ -125,7 +125,8 @@ where
         let l_target_range = range_intersect(&l_child_range, target_range);
         let r_target_range = range_intersect(&r_child_range, target_range);
 
-        diverged.resolve_pending_ops(l_child_range.len(), r_child_range.len());
+        diverged
+            .resolve_pending_ops(l_child_range.len(), r_child_range.len());
 
         let mut query_l_child =
             || diverged.l_child.query(&l_child_range, &l_target_range);
@@ -195,7 +196,8 @@ where
         let r_target_range = range_intersect(&r_child_range, target_range);
 
         let diverged = self.ensure_diverged(node_range.len());
-        diverged.resolve_pending_ops(l_child_range.len(), r_child_range.len());
+        diverged
+            .resolve_pending_ops(l_child_range.len(), r_child_range.len());
 
         if !r_target_range.is_empty() {
             diverged.r_child.modify(
@@ -262,5 +264,9 @@ mod test {
         assert_eq!(seg.query_point(len / 4 * 3 - 1), 2);
         assert_eq!(seg.query_point(len / 4 * 3), 1);
         assert_eq!(CHILD_CREATED_CNT.load(Ordering::Acquire), 6);
+        seg.modify(&(len / 16 * 7..len / 2), &Add1, 1);
+        assert_eq!(CHILD_CREATED_CNT.load(Ordering::Acquire), 10);
+        assert_eq!(seg.query(&(len / 2 - 89..len / 2)), 267);
+        assert_eq!(CHILD_CREATED_CNT.load(Ordering::Acquire), 10);
     }
 }
