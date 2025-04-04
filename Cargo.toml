@@ -1,6 +1,11 @@
 [package]
 name = "segtri"
 version = "0.1.0"
+license = "MIT"
+description = "Segment tree with customizable data type and update operations"
+repository = "https://github.com/skr2005/segtri"
+keywords = ["segment", "tree", "segtree"]
+categories = ["data-structures"]
 edition = "2024"
 
 [dependencies]
