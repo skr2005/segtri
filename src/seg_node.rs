@@ -165,30 +165,6 @@ where
         }
     }
 
-    fn ensure_diverged(
-        &mut self,
-        my_node_range_len: usize,
-    ) -> &mut DivergedSegNode<T, Op> {
-        match self {
-            Same(s) => {
-                #[cfg(test)]
-                CHILD_CREATED_CNT.fetch_add(2, Ordering::SeqCst);
-
-                *self = Diverged(DivergedSegNode {
-                    data_acc: &*s * my_node_range_len,
-                    pending_ops_for_children: LazyOps::new(),
-                    l_child: Box::new(SegNode::Same(s.clone())),
-                    r_child: Box::new(SegNode::Same(s.clone())),
-                });
-                let Diverged(d) = self else {
-                    panic!("Impossible")
-                };
-                d
-            }
-            Diverged(d) => d,
-        }
-    }
-
     pub fn modify(
         &mut self,
         node_range: &Range<usize>,
@@ -218,29 +194,55 @@ where
         let l_target_range = range_intersect(&l_child_range, target_range);
         let r_target_range = range_intersect(&r_child_range, target_range);
 
-        let diverged = self.ensure_diverged(node_range.len());
-        diverged
-            .resolve_pending_ops(l_child_range.len(), r_child_range.len());
+        let modify_and_query_children =
+            |l_child: &mut Self, r_child: &mut Self| {
+                if !r_target_range.is_empty() {
+                    r_child.modify(
+                        &r_child_range,
+                        &r_target_range,
+                        op,
+                        times,
+                    );
+                }
+                if !l_target_range.is_empty() {
+                    l_child.modify(
+                        &l_child_range,
+                        &l_target_range,
+                        op,
+                        times,
+                    );
+                }
+                &l_child.query(&l_child_range, &l_child_range)
+                    + &r_child.query(&r_child_range, &r_child_range)
+            };
 
-        if !r_target_range.is_empty() {
-            diverged.r_child.modify(
-                &r_child_range,
-                &r_target_range,
-                op,
-                times,
-            );
+        match self {
+            Same(s) => {
+                #[cfg(test)]
+                CHILD_CREATED_CNT.fetch_add(2, Ordering::SeqCst);
+                let mut l_child = Box::new(SegNode::Same(s.clone()));
+                let mut r_child = Box::new(SegNode::Same(s.clone()));
+                *self = Diverged(DivergedSegNode {
+                    data_acc: modify_and_query_children(
+                        &mut l_child,
+                        &mut r_child,
+                    ),
+                    l_child,
+                    r_child,
+                    pending_ops_for_children: LazyOps::new(),
+                });
+            }
+            Diverged(diverged) => {
+                diverged.resolve_pending_ops(
+                    l_child_range.len(),
+                    r_child_range.len(),
+                );
+                diverged.data_acc = modify_and_query_children(
+                    &mut diverged.l_child,
+                    &mut diverged.r_child,
+                );
+            }
         }
-        if !l_target_range.is_empty() {
-            diverged.l_child.modify(
-                &l_child_range,
-                &l_target_range,
-                op,
-                times,
-            );
-        }
-        diverged.data_acc =
-            &diverged.l_child.query(&l_child_range, &l_child_range)
-                + &diverged.r_child.query(&r_child_range, &r_child_range);
     }
 }
 
