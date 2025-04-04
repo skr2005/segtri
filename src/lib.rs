@@ -27,7 +27,7 @@
 
     # Example
     ```
-    use segtree_rs::{SegTree, ModifyOp};
+    use segtri::{SegTree, ModifyOp};
 
     #[derive(Clone, PartialEq)]
     enum Operations {

@@ -1,7 +1,7 @@
 use std::usize;
 
 use Operations::*;
-use segtree_rs::{ModifyOp, SegTree};
+use segtri::{ModifyOp, SegTree};
 use serial_test::parallel;
 
 #[derive(Clone, PartialEq)]
