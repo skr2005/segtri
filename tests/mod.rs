@@ -18,11 +18,13 @@ impl ModifyOp<usize> for Operations {
         seg_size: usize,
         n: usize,
     ) {
-        if n == 0 {
-            return;
-        }
         match self {
-            SetTo(x) => *orig_data = x * seg_size,
+            SetTo(x) => {
+                if n == 0 {
+                    return;
+                }
+                *orig_data = x * seg_size
+            }
             Add1 => *orig_data += n * seg_size,
             Mul(x) => *orig_data *= x.pow(n.try_into().unwrap()),
         }
