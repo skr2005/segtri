@@ -27,7 +27,7 @@ The segment tree achieves O(log(n)) for updates and queries, provided:
 - Data type multiplication [Mul::mul] is O(log(k)), where `k` is the multiplier.
 
 # Example
-```
+```rust
 use segtri::{SegTree, ModifyOp};
 
 #[derive(Clone, PartialEq)]
