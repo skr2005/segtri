@@ -9,12 +9,12 @@ use std::ops::{Add, Mul, Range};
 
 pub use modify_op::ModifyOp;
 
+/// Segment tree which allows quick range queries and quick range updates.
 pub struct SegTree<T, Op> {
     point_cnt: usize,
     root: SegNode<T, Op>,
 }
 
-/// Segment tree which allows quick range queries and quick range updates.
 impl<T, Op> SegTree<T, Op>
 where
     T: Sized + Clone,
