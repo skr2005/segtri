@@ -41,5 +41,5 @@ impl ModifyOp<I32> for Mul2 {
 fn main() {
     let mut seg = SegTree::new(7, I32(-1));
     seg.modify(&(1..4), &Mul2, 2);
-    assert_eq!(seg.query(&(0..2)).0, -3);
+    assert_eq!(seg.query(&(0..2)).0, -5);
 }
