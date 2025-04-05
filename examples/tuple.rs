@@ -49,7 +49,9 @@ impl ModifyOp<Tu> for Op {
                 }
             }
             SetTo(tu) => {
-                *orig_seg_data = tu * seg_len;
+                if n > 0 {
+                    *orig_seg_data = tu * seg_len;
+                }
             }
         }
     }
