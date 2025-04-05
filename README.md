@@ -4,13 +4,15 @@ This crate provides a simple implementation of a segment tree with lazy propagat
 It supports efficient updates and queries over ranges of data.
 
 # Features
-- **Customizable Data Type**:
+- **Customizable Data Type and Its Query Method**:
     Any type `T` can be used as the data in the segment tree, as long as:
     - It implements [Sized] and [Clone].
     - Its reference implements [`Add<Output = T>`] and [`Mul<usize, Output = T>`].
 
-    The multiplication trait is used to efficiently compute the sum of repeated data
-    and is assumed to be faster than adding multiple components individually.
+    To customize queries, you can simply redefine how the data are 'summed' and 'multiplied'.
+
+    The multiplication trait is used to efficiently compute the 'sum' of repeated data
+    and is assumed to be faster than 'adding' multiple components individually.
 
 - **Customizable Update Operations**:
     Any type `Op` can be used as an update operation, provided it implements [ModifyOp].
