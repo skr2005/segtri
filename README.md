@@ -64,3 +64,5 @@ assert_eq!(seg.query_point(1), 3);
 seg.modify_point(0, &Add1, 2);
 assert_eq!(seg.query(&(0..2)), 5 + 3);
 ```
+
+For more examples please see `examples` directory.
