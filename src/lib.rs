@@ -8,7 +8,7 @@ use std::ops::{Add, Mul, Range};
 
 pub use modify_op::ModifyOp;
 
-/// Segment tree which allows quick range queries and quick range updates.
+/// Segment tree that supports efficient range queries and range updates.
 pub struct SegTree<T, Op> {
     point_cnt: usize,
     root: SegNode<T, Op>,
@@ -22,7 +22,10 @@ where
 {
     /// Creates a new [SegTree] with `point_cnt` points,
     /// all initialized to `default_data_for_single_point`.
-    /// This is O(1) and doesn't allocate on the heap, with nodes lazily created.
+    ///
+    /// This is an O(1) operation that does not allocate on the heap.
+    /// Tree nodes are created lazily.
+    ///
     /// # Panics
     /// Panics if `point_cnt == 0`.
     pub fn new(
@@ -38,8 +41,11 @@ where
         }
     }
 
-    /// Creates a fully built [SegTree] from the provided slice of point data, which is O(n).
-    /// Use [Self::new] if all points are identical.
+    /// Creates a fully built [SegTree] from the provided slice of point data.
+    ///
+    /// This is an O(n) operation.
+    /// Use [Self::new] if all points are initialized to the same value.
+    ///
     /// # Panics
     /// Panics if `point_data.is_empty()`.
     pub fn with_points(point_data: &[T]) -> Self {
@@ -55,16 +61,18 @@ where
         self.point_cnt
     }
 
-    /// Modifies the data of a single point at `point_idx`.
+    /// Applies an update operation to the data at a single point `point_idx`.
+    ///
     /// # Panics
     /// Panics if `point_idx >= self.point_cnt()`.
     pub fn modify_point(&mut self, point_idx: usize, op: &Op) {
         self.modify(&(point_idx..point_idx + 1), op);
     }
 
-    /// Modifies the data for all points in `target_range`.
-    /// 
-    /// This method does nothing when target range is empty.
+    /// Applies an update operation to all points in the given `target_range`.
+    ///
+    /// This method does nothing if the range is empty.
+    ///
     /// # Panics
     /// Panics if the range is not empty and its end exceeds `self.point_cnt()`.
     pub fn modify(&mut self, target_range: &Range<usize>, op: &Op) {
@@ -75,7 +83,8 @@ where
         self.root.modify(&(0..self.point_cnt), target_range, op);
     }
 
-    /// Retrieves the data at a single point `point_idx`.
+    /// Retrieves the data at the point `point_idx`.
+    ///
     /// # Panics
     /// Panics if `point_idx >= self.point_cnt()`.
     pub fn query_point(&mut self, point_idx: usize) -> T {
@@ -83,6 +92,7 @@ where
     }
 
     /// Retrieves the sum of data for all points in `target_range`.
+    ///
     /// # Panics
     /// Panics if the range is empty or out of bounds.
     pub fn query(&mut self, target_range: &Range<usize>) -> T {

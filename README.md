@@ -4,15 +4,15 @@ This crate provides a simple implementation of a segment tree with lazy propagat
 It supports efficient updates and queries over ranges of data.
 
 # Features
-- **Customizable Data Type and Its Query Method**:
+- **Customizable Data Type and Query Method**:
     Any type `T` can be used as the data in the segment tree, as long as:
     - It implements [Clone].
     - Its reference implements [`Add<Output = T>`] and [`Mul<usize, Output = T>`].
 
-    To customize queries, you can simply redefine how the data are 'summed' and 'multiplied'.
+    To customize queries, you can redefine how the data are *summed* and *multiplied*.
 
-    The multiplication trait is used to efficiently compute the 'sum' of repeated data
-    and is assumed to be faster than 'adding' multiple components individually.
+    The multiplication trait is used to efficiently compute the "sum" of repeated data
+    and is assumed to be faster than "adding" multiple components individually.
 
 - **Customizable Update Operations**:
     Any type `Op` can be used as an update operation, provided it implements [`ModifyOp<T>`].
@@ -49,13 +49,13 @@ impl ModifyOp<usize> for Add {
 
 // Segment tree of length 10 with initial point value 1
 let mut seg = SegTree::new(10, 1);
-// query the sum of segment 2..4
+// Query the sum of segment 2..4
 assert_eq!(seg.query(&(2..4)), 2);
-// add segment 0..10 by 2.
+// Add 2 to the segment 0..10
 seg.modify(&(0..10), &Add(2));
-// query the value of point 1
+// Query the value at point 1
 assert_eq!(seg.query_point(1), 3);
-// add 2 to point 0
+// Add 2 to point 0
 seg.modify_point(0, &Add(2));
 assert_eq!(seg.query(&(0..2)), 5 + 3);
 ```
