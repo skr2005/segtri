@@ -30,9 +30,9 @@ impl ModifyOp<Data> for Sub1 {
         &self,
         orig_seg_data: &mut Data,
         seg_len: usize,
-        n: usize,
+        n: isize,
     ) {
-        orig_seg_data.0 -= (n * seg_len) as i32;
+        orig_seg_data.0 -= n as i32 * seg_len as i32;
     }
 }
 

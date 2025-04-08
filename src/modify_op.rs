@@ -20,6 +20,6 @@ pub trait ModifyOp<T>: PartialEq + Clone {
         &self,
         orig_seg_data: &mut T,
         seg_len: usize,
-        n: usize,
+        n: isize,
     );
 }

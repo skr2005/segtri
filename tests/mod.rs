@@ -16,7 +16,7 @@ impl ModifyOp<usize> for Operations {
         &self,
         orig_data: &mut usize,
         seg_size: usize,
-        n: usize,
+        n: isize,
     ) {
         match self {
             SetTo(x) => {
@@ -25,7 +25,7 @@ impl ModifyOp<usize> for Operations {
                 }
                 *orig_data = x * seg_size
             }
-            Add1 => *orig_data += n * seg_size,
+            Add1 => *orig_data += n as usize * seg_size,
             Mul(x) => *orig_data *= x.pow(n.try_into().unwrap()),
         }
     }

@@ -32,7 +32,7 @@ impl ModifyOp<I32> for Mul2 {
         &self,
         orig_seg_data: &mut I32,
         _seg_len: usize,
-        n: usize,
+        n: isize,
     ) {
         orig_seg_data.0 *= 2i32.pow(n.try_into().unwrap())
     }

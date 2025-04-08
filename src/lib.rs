@@ -62,7 +62,7 @@ where
         &mut self,
         point_idx: usize,
         op: &Op,
-        times: usize,
+        times: isize,
     ) {
         self.modify(&(point_idx..point_idx + 1), op, times);
     }
@@ -75,7 +75,7 @@ where
         &mut self,
         target_range: &Range<usize>,
         op: &Op,
-        ntimes: usize,
+        ntimes: isize,
     ) {
         if target_range.is_empty() || ntimes == 0 {
             return;

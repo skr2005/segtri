@@ -26,7 +26,7 @@ impl<T, Op> SegNode<T, Op> {
         &mut self,
         node_range_len: usize,
         op: &Op,
-        times: usize,
+        times: isize,
     ) where
         Op: ModifyOp<T> + 'a,
     {
@@ -170,7 +170,7 @@ where
         node_range: &Range<usize>,
         target_range: &Range<usize>,
         op: &Op,
-        times: usize,
+        times: isize,
     ) {
         #[cfg(debug_assertions)]
         {
@@ -273,9 +273,9 @@ mod test {
                 &self,
                 orig_seg_data: &mut usize,
                 seg_len: usize,
-                n: usize,
+                n: isize,
             ) {
-                *orig_seg_data += seg_len * n;
+                *orig_seg_data += seg_len * n as usize;
             }
         }
         let mut seg = SegTree::new(len, 1);

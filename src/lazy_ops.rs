@@ -1,4 +1,4 @@
-pub struct LazyOps<Op>(Vec<(Op, usize)>);
+pub struct LazyOps<Op>(Vec<(Op, isize)>);
 
 impl<Op> LazyOps<Op>
 where
@@ -9,7 +9,7 @@ where
         LazyOps(vec![])
     }
 
-    pub fn push_back(&mut self, new_op: Op, times: usize) {
+    pub fn push_back(&mut self, new_op: Op, times: isize) {
         if times == 0 {
             return;
         }
@@ -17,6 +17,9 @@ where
         if let Some(back) = queue.last_mut() {
             if back.0 == new_op {
                 back.1 += times;
+                if back.1 == 0 {
+                    queue.pop();
+                }
                 return;
             }
         }
@@ -27,7 +30,7 @@ where
         self.0 = vec![];
     }
 
-    pub fn inner(&self) -> &Vec<(Op, usize)> {
+    pub fn inner(&self) -> &Vec<(Op, isize)> {
         &self.0
     }
 }

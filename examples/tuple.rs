@@ -37,7 +37,7 @@ impl ModifyOp<Tu> for Op {
         &self,
         orig_seg_data: &mut Tu,
         seg_len: usize,
-        n: usize,
+        n: isize,
     ) {
         match self {
             Swap => {
