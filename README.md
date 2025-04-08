@@ -7,7 +7,7 @@ It supports efficient updates and queries over ranges of data.
 - **Customizable Data Type and Query Method**:
     Any type `T` can be used as the data in the segment tree, as long as:
     - It implements [Clone].
-    - Its reference implements [`Add<Output = T>`] and [`Mul<usize, Output = T>`].
+    - Its reference implements [`Add<Output = T>`](Add) and [`Mul<usize, Output = T>`](Mul).
 
     To customize queries, you can redefine how the data are *summed* and *multiplied*.
 
