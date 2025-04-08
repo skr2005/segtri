@@ -1,7 +1,6 @@
 use std::usize;
 
 use segtri::{ModifyOp, SegTree};
-use serial_test::parallel;
 
 struct MulAdd(usize, usize);
 
@@ -34,7 +33,6 @@ impl ModifyOp<usize> for MulAdd {
 }
 
 #[test]
-#[parallel]
 fn test_simple_addition() {
     let mut seg = SegTree::new(10, 1);
     seg.modify(&(0..0), &MulAdd::add(2));
@@ -53,7 +51,6 @@ fn test_simple_addition() {
 }
 
 #[test]
-#[parallel]
 fn test_with_points() {
     let mut seg = SegTree::with_points(&(1..=10).collect::<Vec<_>>());
     seg.modify(&(0..0), &MulAdd::add(2));
@@ -72,7 +69,6 @@ fn test_with_points() {
 }
 
 #[test]
-#[parallel]
 fn test_op_order() {
     let mut seg = SegTree::new(10, 0);
     assert_eq!(seg.query(&(0..7)), 0);
@@ -92,7 +88,6 @@ fn test_op_order() {
 }
 
 #[test]
-#[parallel]
 fn test_large_seg() {
     let mut seg = SegTree::new(usize::MAX, 0);
     seg.modify(&(0..usize::MAX / 3), &MulAdd::add(1));
