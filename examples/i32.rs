@@ -23,23 +23,24 @@ impl Mul<usize> for &I32 {
     }
 }
 
-/// Our update operation.
-#[derive(Clone, PartialEq)]
-struct Mul2;
+struct Multiply(i32);
 
-impl ModifyOp<I32> for Mul2 {
-    fn modify_range_ntimes(
-        &self,
-        orig_seg_data: &mut I32,
-        _seg_len: usize,
-        n: isize,
-    ) {
-        orig_seg_data.0 *= 2i32.pow(n.try_into().unwrap())
+impl ModifyOp<I32> for Multiply {
+    fn nop() -> Self {
+        Multiply(1)
+    }
+
+    fn apply(&self, orig_seg_data: &mut I32, _seg_len: usize) {
+        orig_seg_data.0 *= self.0
+    }
+
+    fn combine(&mut self, another_op: &Self) {
+        self.0 *= another_op.0
     }
 }
 
 fn main() {
     let mut seg = SegTree::new(7, I32(-1));
-    seg.modify(&(1..4), &Mul2, 2);
+    seg.modify(&(1..4), &Multiply(4));
     assert_eq!(seg.query(&(0..2)).0, -5);
 }

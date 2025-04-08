@@ -23,25 +23,28 @@ impl Mul<usize> for &Data {
 }
 
 #[derive(Clone, PartialEq)]
-struct Sub1;
+struct Sub(usize);
 
-impl ModifyOp<Data> for Sub1 {
-    fn modify_range_ntimes(
-        &self,
-        orig_seg_data: &mut Data,
-        seg_len: usize,
-        n: isize,
-    ) {
-        orig_seg_data.0 -= n as i32 * seg_len as i32;
+impl ModifyOp<Data> for Sub {
+    fn nop() -> Self {
+        Sub(0)
+    }
+
+    fn apply(&self, orig_seg_data: &mut Data, seg_len: usize) {
+        orig_seg_data.0 -= (seg_len * self.0) as i32
+    }
+
+    fn combine(&mut self, another_op: &Self) {
+        self.0 += another_op.0
     }
 }
 
 fn main() {
     let mut seg = SegTree::new(5, Data(0));
-    seg.modify(&(0..5), &Sub1, 2);
+    seg.modify(&(0..5), &Sub(2));
     assert_eq!(seg.query(&(0..4)).0, -2);
-    seg.modify(&(0..2), &Sub1, 1);
-    seg.modify(&(1..3), &Sub1, 1);
-    seg.modify(&(2..4), &Sub1, 1);
+    seg.modify(&(0..2), &Sub(1));
+    seg.modify(&(1..3), &Sub(1));
+    seg.modify(&(2..4), &Sub(1));
     assert_eq!(seg.query(&(0..5)).0, -4);
 }

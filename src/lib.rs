@@ -1,6 +1,5 @@
 #![doc = include_str!("./../README.md")]
 
-mod lazy_ops;
 mod modify_op;
 mod seg_node;
 
@@ -17,7 +16,7 @@ pub struct SegTree<T, Op> {
 
 impl<T, Op> SegTree<T, Op>
 where
-    T: Sized + Clone,
+    T: Clone,
     for<'x> &'x T: Add<Output = T> + Mul<usize, Output = T>,
     Op: ModifyOp<T>,
 {
@@ -30,6 +29,7 @@ where
         point_cnt: usize,
         default_data_for_single_point: T,
     ) -> Self {
+        assert!(point_cnt > 0);
         Self {
             point_cnt,
             root: SegNode::from_same_point_data(
@@ -58,31 +58,21 @@ where
     /// Modifies the data of a single point at `point_idx`.
     /// # Panics
     /// Panics if `point_idx >= self.point_cnt()`.
-    pub fn modify_point(
-        &mut self,
-        point_idx: usize,
-        op: &Op,
-        times: isize,
-    ) {
-        self.modify(&(point_idx..point_idx + 1), op, times);
+    pub fn modify_point(&mut self, point_idx: usize, op: &Op) {
+        self.modify(&(point_idx..point_idx + 1), op);
     }
 
-    /// Modifies the data for all points in `target_range`, repeated `ntimes`.
-    /// Does nothing if the range is empty or `ntimes` is zero.
+    /// Modifies the data for all points in `target_range`.
+    /// 
+    /// This method does nothing when target range is empty.
     /// # Panics
-    /// May panic if the range end exceeds `self.point_cnt()`.
-    pub fn modify(
-        &mut self,
-        target_range: &Range<usize>,
-        op: &Op,
-        ntimes: isize,
-    ) {
-        if target_range.is_empty() || ntimes == 0 {
+    /// Panics if the range is not empty and its end exceeds `self.point_cnt()`.
+    pub fn modify(&mut self, target_range: &Range<usize>, op: &Op) {
+        if target_range.is_empty() {
             return;
         }
         assert!(target_range.end <= self.point_cnt);
-        self.root
-            .modify(&(0..self.point_cnt), target_range, op, ntimes);
+        self.root.modify(&(0..self.point_cnt), target_range, op);
     }
 
     /// Retrieves the data at a single point `point_idx`.

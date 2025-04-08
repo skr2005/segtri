@@ -1,47 +1,49 @@
 use std::usize;
 
-use Operations::*;
 use segtri::{ModifyOp, SegTree};
 use serial_test::parallel;
 
-#[derive(Clone, PartialEq)]
-enum Operations {
-    SetTo(usize),
-    Add1,
-    Mul(usize),
+struct MulAdd(usize, usize);
+
+impl MulAdd {
+    fn add(b: usize) -> Self {
+        Self(1, b)
+    }
+
+    fn mul(k: usize) -> Self {
+        Self(k, 0)
+    }
 }
 
-impl ModifyOp<usize> for Operations {
-    fn modify_range_ntimes(
-        &self,
-        orig_data: &mut usize,
-        seg_size: usize,
-        n: isize,
-    ) {
-        match self {
-            SetTo(x) => {
-                if n == 0 {
-                    return;
-                }
-                *orig_data = x * seg_size
-            }
-            Add1 => *orig_data += n as usize * seg_size,
-            Mul(x) => *orig_data *= x.pow(n.try_into().unwrap()),
-        }
+impl ModifyOp<usize> for MulAdd {
+    fn nop() -> Self {
+        MulAdd(1, 0)
+    }
+
+    fn combine(&mut self, another_op: &Self) {
+        *self = Self(
+            another_op.0 * self.0,
+            another_op.0 * self.1 + another_op.1,
+        )
+    }
+
+    fn apply(&self, orig_seg_data: &mut usize, seg_len: usize) {
+        *orig_seg_data *= self.0;
+        *orig_seg_data += seg_len * self.1
     }
 }
 
 #[test]
 #[parallel]
-fn test_simple_add() {
+fn test_simple_addition() {
     let mut seg = SegTree::new(10, 1);
-    seg.modify(&(0..0), &Add1, 2);
+    seg.modify(&(0..0), &MulAdd::add(2));
     assert_eq!(seg.query(&(0..10)), 10);
-    seg.modify(&(0..10), &Add1, 2);
+    seg.modify(&(0..10), &MulAdd::add(2));
     assert_eq!(seg.query(&(0..10)), 30);
-    seg.modify(&(0..5), &Add1, 2);
+    seg.modify(&(0..5), &MulAdd::add(2));
     assert_eq!(seg.query(&(0..10)), 40);
-    seg.modify_point(2, &Add1, 4);
+    seg.modify_point(2, &MulAdd::add(4));
     assert_eq!(seg.query(&(0..10)), 44);
     assert_eq!(seg.query(&(2..6)), 22);
     assert_eq!(seg.query(&(0..10)), 44);
@@ -54,13 +56,13 @@ fn test_simple_add() {
 #[parallel]
 fn test_with_points() {
     let mut seg = SegTree::with_points(&(1..=10).collect::<Vec<_>>());
-    seg.modify(&(0..0), &Add1, 2);
+    seg.modify(&(0..0), &MulAdd::add(2));
     assert_eq!(seg.query(&(0..10)), 10 + 45);
-    seg.modify(&(0..10), &Add1, 2);
+    seg.modify(&(0..10), &MulAdd::add(2));
     assert_eq!(seg.query(&(0..10)), 30 + 45);
-    seg.modify(&(0..5), &Add1, 2);
+    seg.modify(&(0..5), &MulAdd::add(2));
     assert_eq!(seg.query(&(0..10)), 40 + 45);
-    seg.modify_point(2, &Add1, 4);
+    seg.modify_point(2, &MulAdd::add(4));
     assert_eq!(seg.query(&(0..10)), 44 + 45);
     assert_eq!(seg.query(&(2..6)), 22 + 14);
     assert_eq!(seg.query(&(0..10)), 44 + 45);
@@ -72,18 +74,15 @@ fn test_with_points() {
 #[test]
 #[parallel]
 fn test_op_order() {
-    let mut seg = SegTree::new(10, 1);
-    seg.modify(&(0..10), &SetTo(0), 0);
-    assert_eq!(seg.query(&(0..10)), 10);
-    seg.modify(&(0..10), &SetTo(0), 1);
+    let mut seg = SegTree::new(10, 0);
     assert_eq!(seg.query(&(0..7)), 0);
-    seg.modify(&(1..10), &Mul(10), 3);
-    seg.modify(&(7..9), &Add1, 2);
-    seg.modify(&(1..8), &Add1, 1);
-    seg.modify(&(5..7), &Mul(2), 2);
-    seg.modify(&(5..7), &Add1, 0);
-    seg.modify(&(2..10), &Mul(2), 2);
-    seg.modify(&(4..7), &Add1, 1);
+    seg.modify(&(1..10), &MulAdd::mul(1000));
+    seg.modify(&(7..9), &MulAdd::add(2));
+    seg.modify(&(1..8), &MulAdd::add(1));
+    seg.modify(&(5..7), &MulAdd::mul(4));
+    seg.modify(&(5..7), &MulAdd::add(0));
+    seg.modify(&(2..10), &MulAdd::mul(4));
+    seg.modify(&(4..7), &MulAdd::add(1));
     assert_eq!(seg.query(&(0..6)), 31);
     assert_eq!(seg.query(&(0..10)), 68);
     assert_eq!(
@@ -96,8 +95,8 @@ fn test_op_order() {
 #[parallel]
 fn test_large_seg() {
     let mut seg = SegTree::new(usize::MAX, 0);
-    seg.modify(&(0..usize::MAX / 3), &SetTo(1), 1);
-    seg.modify(&(usize::MAX / 5..usize::MAX / 3 + 121), &Add1, 3);
+    seg.modify(&(0..usize::MAX / 3), &MulAdd::add(1));
+    seg.modify(&(usize::MAX / 5..usize::MAX / 3 + 121), &MulAdd::add(3));
     assert_eq!(seg.query_point(0), 1);
     assert_eq!(seg.query_point(usize::MAX / 3), 3);
     assert_eq!(seg.query_point(usize::MAX / 3 - 1), 4);

@@ -6,7 +6,7 @@ It supports efficient updates and queries over ranges of data.
 # Features
 - **Customizable Data Type and Its Query Method**:
     Any type `T` can be used as the data in the segment tree, as long as:
-    - It implements [Sized] and [Clone].
+    - It implements [Clone].
     - Its reference implements [`Add<Output = T>`] and [`Mul<usize, Output = T>`].
 
     To customize queries, you can simply redefine how the data are 'summed' and 'multiplied'.
@@ -15,7 +15,7 @@ It supports efficient updates and queries over ranges of data.
     and is assumed to be faster than 'adding' multiple components individually.
 
 - **Customizable Update Operations**:
-    Any type `Op` can be used as an update operation, provided it implements [ModifyOp].
+    Any type `Op` can be used as an update operation, provided it implements [`ModifyOp<T>`].
 
 - **Lazy Node Creation**:
     Nodes in the segment tree are created lazily. This ensures the tree remains small
@@ -32,25 +32,18 @@ The segment tree achieves O(log(n)) for updates and queries, provided:
 ```rust
 use segtri::{SegTree, ModifyOp};
 
-#[derive(Clone, PartialEq)]
-enum Operations {
-    Add1,
-    Mul(usize),
-}
+struct Add(usize);
+impl ModifyOp<usize> for Add {
+    fn nop() -> Self {
+        Add(0)
+    }
 
-use Operations::*;
+    fn combine(&mut self, another_op: &Self) {
+        self.0 += another_op.0
+    }
 
-impl ModifyOp<usize> for Operations {
-    fn modify_range_ntimes(
-        &self,
-        orig_data: &mut usize,
-        seg_size: usize,
-        n: isize,
-    ) {
-        match self {
-            Add1 => *orig_data += n as usize * seg_size,
-            Mul(x) => *orig_data *= x.pow(n.try_into().unwrap()),
-        }
+    fn apply(&self, orig_seg_data: &mut usize, seg_len: usize) {
+        *orig_seg_data += seg_len * self.0
     }
 }
 
@@ -58,12 +51,12 @@ impl ModifyOp<usize> for Operations {
 let mut seg = SegTree::new(10, 1);
 // query the sum of segment 2..4
 assert_eq!(seg.query(&(2..4)), 2);
-// multiply segment 0..10 by 3 one time.
-seg.modify(&(0..10), &Mul(3), 1);
+// add segment 0..10 by 2.
+seg.modify(&(0..10), &Add(2));
 // query the value of point 1
 assert_eq!(seg.query_point(1), 3);
-// add 1 to point 0 two times
-seg.modify_point(0, &Add1, 2);
+// add 2 to point 0
+seg.modify_point(0, &Add(2));
 assert_eq!(seg.query(&(0..2)), 5 + 3);
 ```
 
